@@ -1,50 +1,72 @@
 package com.example;
 
+import java.util.EnumMap;
+import java.util.Map;
+import java.util.Objects;
+import java.util.function.IntBinaryOperator;
+
 public class Calculator {
 
-    // Code Smell: Long method + high complexity
-    public int calculate(int a, int b, String op) {
-    if(op.equals("add")) {
-    return a + b;
-    } else if(op.equals("add-again")) {
-    return a + b; // DUPLICATION
-    } else if(op.equals("sub")) {
-    return a - b;
-    } else if(op.equals("sub-again")) {
-    return a - b; // DUPLICATION
-    } else if(op.equals("mul")) {
-    return a * b;
-    } else if(op.equals("div")) {
-    if(b == 0) {
-    return 0;
-    } else {
-    return a / b;
-    }
-    } else if(op.equals("mod")) {
-    return a % b;
-    } else if(op.equals("pow")) {
-    int result = 1;
-    for(int i = 0; i < b; i++) {
-    result = result * a;
-    }
-    return result;
-    } else {
-    return 0;
-    }
+    /**
+     * Supported calculator operations
+     */
+    public enum Operation {
+        ADD,
+        SUBTRACT,
+        MULTIPLY,
+        DIVIDE,
+        MODULO,
+        POWER
     }
 
-    // Code Duplication (students must remove)
-    public int addNumbers(int x, int y) {
-        return x + y;
+    private static final Map<Operation, IntBinaryOperator> OPERATIONS =
+            new EnumMap<>(Operation.class);
+
+    static {
+        OPERATIONS.put(Operation.ADD, Integer::sum);
+        OPERATIONS.put(Operation.SUBTRACT, (a, b) -> a - b);
+        OPERATIONS.put(Operation.MULTIPLY, (a, b) -> a * b);
+        OPERATIONS.put(Operation.MODULO, (a, b) -> a % b);
+        OPERATIONS.put(Operation.DIVIDE, Calculator::safeDivide);
+        OPERATIONS.put(Operation.POWER, Calculator::power);
     }
 
-    public int sumValues(int a, int b) {
-        return a + b;
+    /**
+     * Calculates result for given operands and operation
+     */
+    public int calculate(int a, int b, Operation operation) {
+        Objects.requireNonNull(operation, "Operation must not be null");
+
+        IntBinaryOperator operator = OPERATIONS.get(operation);
+        if (operator == null) {
+            throw new IllegalArgumentException("Unsupported operation: " + operation);
+        }
+
+        return operator.applyAsInt(a, b);
     }
 
-    // INTENTIONAL DUPLICATION
-    public int addAgain(int a, int b) {
-    return a + b;
+    /**
+     * Safe division with validation
+     */
+    private static int safeDivide(int a, int b) {
+        if (b == 0) {
+            throw new ArithmeticException("Division by zero is not allowed");
+        }
+        return a / b;
     }
 
+    /**
+     * Calculates power using iterative multiplication
+     */
+    private static int power(int base, int exponent) {
+        if (exponent < 0) {
+            throw new IllegalArgumentException("Negative exponent not supported");
+        }
+
+        int result = 1;
+        for (int i = 0; i < exponent; i++) {
+            result *= base;
+        }
+        return result;
+    }
 }
