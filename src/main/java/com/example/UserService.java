@@ -2,40 +2,68 @@ package com.example;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
-import java.sql.Statement;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.util.Objects;
 
 public class UserService {
 
-    // SECURITY ISSUE: Hardcoded credentials
-    private String password = "admin123";
+    private static final String DB_URL = "jdbc:mysql://localhost/db";
+    private static final String DB_USER = "root";
 
-    // VULNERABILITY: SQL Injection
-    public void findUser(String username) throws Exception {
+    /**
+     * Retrieves a database connection using environment variables
+     */
+    private Connection getConnection() throws SQLException {
+        String password = System.getenv("DB_PASSWORD");
 
-        Connection conn =
-            DriverManager.getConnection("jdbc:mysql://localhost/db",
-                    "root", password);
+        if (password == null || password.isBlank()) {
+            throw new IllegalStateException("Database password not configured");
+        }
 
-        Statement st = conn.createStatement();
-
-        String query =
-            "SELECT * FROM users WHERE name = '" + username + "'";
-
-        st.executeQuery(query);
+        return DriverManager.getConnection(DB_URL, DB_USER, password);
     }
 
-    // SMELL: Unused method
-    public void notUsed() {
-        System.out.println("I am never called");
+    /**
+     * Finds a user by username (safe from SQL Injection)
+     */
+    public void findUser(String username) throws SQLException {
+        validateUsername(username);
+
+        String query = "SELECT id, name, email FROM users WHERE name = ?";
+
+        try (
+            Connection conn = getConnection();
+            PreparedStatement ps = conn.prepareStatement(query)
+        ) {
+            ps.setString(1, username);
+            ps.executeQuery();
+        }
     }
 
-    public void deleteUser(String username) throws Exception {
-    Connection conn =
-    DriverManager.getConnection("jdbc:mysql://localhost/db",
-    "root", password);
-    Statement st = conn.createStatement();
-    String query =
-    "DELETE FROM users WHERE name = '" + username + "'";
-    st.execute(query);
+    /**
+     * Deletes a user by username (safe from SQL Injection)
+     */
+    public void deleteUser(String username) throws SQLException {
+        validateUsername(username);
+
+        String query = "DELETE FROM users WHERE name = ?";
+
+        try (
+            Connection conn = getConnection();
+            PreparedStatement ps = conn.prepareStatement(query)
+        ) {
+            ps.setString(1, username);
+            ps.executeUpdate();
+        }
+    }
+
+    /**
+     * Validates username input
+     */
+    private void validateUsername(String username) {
+        if (Objects.isNull(username) || username.isBlank()) {
+            throw new IllegalArgumentException("Username must not be null or empty");
+        }
     }
 }
